@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>資料視覺化期中報告</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Microsoft JhengHei", "蘋方-繁", Arial, sans-serif;
+            font-size: 16px;
+            line-height: 1.8;
+            color: #1a2e35;
+            background: #F8F9FA;
+        }
+
+        /* ══════════════════════════════
+     漢堡按鈕
+  ══════════════════════════════ */
+        #menu-btn {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 1000;
+            width: 42px;
+            height: 42px;
+            background: #0f7a7a;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            box-shadow: 0 2px 10px rgba(15, 122, 122, 0.35);
+            transition: background 0.2s;
+        }
+
+        #menu-btn:hover {
+            background: #0a5f5f;
+        }
+
+        #menu-btn span {
+            display: block;
+            width: 20px;
+            height: 3px;
+            flex-shrink: 0;
+            background: #fff;
+            border-radius: 2px;
+            transition: transform 0.3s, opacity 0.3s;
+            transform-origin: center;
+        }
+
+        body.nav-open #menu-btn span:nth-child(1) {
+            transform: translateY(8px) rotate(45deg);
+        }
+
+        body.nav-open #menu-btn span:nth-child(2) {
+            opacity: 0;
+            transform: scaleX(0);
+        }
+
+        body.nav-open #menu-btn span:nth-child(3) {
+            transform: translateY(-8px) rotate(-45deg);
+        }
+
+        /* ══════════════════════════════
+     遮罩
+  ══════════════════════════════ */
+        #overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 74, 90, 0.3);
+            z-index: 900;
+            backdrop-filter: blur(2px);
+        }
+
+        body.nav-open #overlay {
+            display: block;
+        }
+
+        /* ══════════════════════════════
+     側邊導覽列
+  ══════════════════════════════ */
+        #sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 280px;
+            background: #0a4a5a;
+            z-index: 950;
+            transform: translateX(-100%);
+            transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        body.nav-open #sidebar {
+            transform: translateX(0);
+        }
+
+        .sidebar-header {
+            padding: 42px 80px 5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+
+        .sidebar-header .nav-label {
+            font-size: 10px;
+            letter-spacing: 3px;
+            color: rgba(255, 255, 255, 0.45);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .sidebar-header .nav-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 0;
+        }
+
+        .sidebar-nav::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background 0.15s;
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 14px;
+            border-left: 3px solid transparent;
+            user-select: none;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            border-left-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            border-left-color: #5dd4c8;
+        }
+
+        .nav-item .nav-num {
+            font-size: 11px;
+            font-weight: 700;
+            color: #5dd4c8;
+            min-width: 28px;
+            flex-shrink: 0;
+        }
+
+        .nav-item.sub {
+            padding-left: 44px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.55);
+        }
+
+        .nav-item.sub .nav-num {
+            color: rgba(93, 212, 200, 0.6);
+            font-size: 10px;
+        }
+
+        .nav-item.sub:hover {
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .nav-section-divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.07);
+            margin: 8px 16px;
+        }
+
+        .sidebar-footer {
+            padding: 14px 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.3);
+            flex-shrink: 0;
+        }
+
+        /* ══════════════════════════════
+     封面
+  ══════════════════════════════ */
+        .cover {
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(160deg, #0f7a7a 0%, #0d5f6e 50%, #0a4a5a 100%);
+            color: #fff;
+            text-align: center;
+            padding: 60px 40px;
+        }
+
+        .cover-badge {
+            font-size: 13px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 6px 20px;
+            border-radius: 20px;
+            margin-bottom: 40px;
+        }
+
+        .cover h1 {
+            font-size: 36px;
+            font-weight: 700;
+            line-height: 1.4;
+            margin-bottom: 16px;
+            max-width: 700px;
+        }
+
+        .cover h2 {
+            font-size: 18px;
+            font-weight: 400;
+            opacity: 0.8;
+            margin-bottom: 60px;
+            max-width: 500px;
+        }
+
+        .cover-divider {
+            width: 60px;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.4);
+            margin: 0 auto 50px;
+        }
+
+        .cover-meta {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .cover-meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .cover-meta-item .label {
+            font-size: 11px;
+            letter-spacing: 2px;
+            opacity: 0.6;
+            text-transform: uppercase;
+        }
+
+        .cover-meta-item .value {
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        /* ══════════════════════════════
+     頁面共用
+  ══════════════════════════════ */
+        .page {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 60px 50px;
+        }
+
+        .section-label {
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: #0f7a7a;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .section-title {
+            font-size: 26px;
+            font-weight: 700;
+            color: #0a4a5a;
+            margin-bottom: 40px;
+            padding-bottom: 14px;
+            border-bottom: 2px solid #e0f2f2;
+        }
+
+        /* ══════════════════════════════
+     目錄
+  ══════════════════════════════ */
+        .toc-list {
+            list-style: none;
+        }
+
+        .toc-list li {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            padding: 12px 8px;
+            border-bottom: 1px dashed #d0e8e8;
+            font-size: 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.15s;
+        }
+
+        .toc-list li:last-child {
+            border-bottom: none;
+        }
+
+        .toc-list li:hover {
+            background: #f0fafa;
+        }
+
+        .toc-list li:hover .toc-text {
+            color: #0f7a7a;
+        }
+
+        .toc-list li .toc-num {
+            color: #0f7a7a;
+            font-weight: 700;
+            min-width: 32px;
+            font-size: 14px;
+        }
+
+        .toc-list li .toc-text {
+            flex: 1;
+            padding: 0 12px;
+            color: #1a2e35;
+            transition: color 0.15s;
+        }
+
+        .toc-list li .toc-page {
+            color: #6b9ea4;
+            font-size: 14px;
+            min-width: 30px;
+            text-align: right;
+        }
+
+        .toc-list li.h2 .toc-text {
+            padding-left: 28px;
+            font-size: 14px;
+            color: #3a5a62;
+        }
+
+        /* ══════════════════════════════
+     正文章節
+  ══════════════════════════════ */
+        .chapter {
+            margin-bottom: 50px;
+        }
+
+        .chapter h2 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0a4a5a;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chapter h2::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 20px;
+            background: #0f7a7a;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+
+        .chapter h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #0f7a7a;
+            margin: 20px 0 8px;
+        }
+
+        .chapter p {
+            color: #2c4a52;
+            margin-bottom: 14px;
+            text-indent: 2em;
+        }
+
+        /* ══════════════════════════════
+     圖表區域
+  ══════════════════════════════ */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .chart-box {
+            border: 1.5px solid #b2d8d8;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .chart-box.full {
+            grid-column: 1 / -1;
+        }
+
+        .chart-header {
+            background: #e8f5f5;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #0a4a5a;
+            border-bottom: 1px solid #b2d8d8;
+        }
+
+        .chart-area {
+            background: #f7fdfd;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b9ea4;
+            font-size: 13px;
+            padding: 20px;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .chart-area svg {
+            opacity: 0.35;
+        }
+
+        .chart-caption {
+            padding: 8px 16px;
+            font-size: 12px;
+            color: #6b9ea4;
+            border-top: 1px solid #e0f2f2;
+            background: #fff;
+        }
+
+        /* ══════════════════════════════
+     表格
+  ══════════════════════════════ */
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+
+        .report-table th {
+            background: #0f7a7a;
+            color: #fff;
+            padding: 10px 14px;
+            text-align: left;
+            font-weight: 500;
+        }
+
+        .report-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #e0f2f2;
+            color: #2c4a52;
+        }
+
+        .report-table tr:nth-child(even) td {
+            background: #f0fafa;
+        }
+
+        .report-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* ══════════════════════════════
+     頁碼
+  ══════════════════════════════ */
+        .page-num {
+            text-align: center;
+            padding: 30px 0 10px;
+            color: #6b9ea4;
+            font-size: 13px;
+            border-top: 1px solid #e0f2f2;
+            margin-top: 60px;
+        }
+
+        @media print {
+
+            #menu-btn,
+            #sidebar,
+            #overlay {
+                display: none !important;
+            }
+
+            .chapter {
+                page-break-inside: avoid;
+            }
+
+            body {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 漢堡按鈕 -->
+    <button id="menu-btn" onclick="toggleNav()" aria-label="開啟導覽選單">
+        <span></span><span></span><span></span>
+    </button>
+
+    <!-- 遮罩 -->
+    <div id="overlay" onclick="toggleNav()"></div>
+
+    <!-- 側邊導覽列 -->
+    <nav id="sidebar">
+        <div class="sidebar-header">
+            <div class="nav-label">Navigation</div>
+        </div>
+        <div class="sidebar-nav">
+            <a class="nav-item" onclick="goTo('cover')">
+                Author
+            </a>
+            <a class="nav-item" onclick="goTo('toc')">
+                Category
+            </a>
+
+            <div class="nav-section-divider"></div>
+            <a class="nav-item" onclick="goTo('ch1')">
+                <span class="nav-num">01</span>
+                台北各區每坪單價熱力圖及綜合所得平均
+            </a>
+            <a class="nav-item" onclick="goTo('ch2')">
+                <span class="nav-num">02</span>
+                購屋壓力與經濟實力
+            </a>
+            <a class="nav-item" onclick="goTo('ch3')">
+                <span class="nav-num">03</span>
+                房地產平均成交單價與交易量
+            </a>
+            <a class="nav-item" onclick="goTo('ch4')">
+                <span class="nav-num">04</span>
+                扶養比與所得之交叉分析
+            </a>
+            <a class="nav-item" onclick="goTo('ch5')">
+                <span class="nav-num">05</span>
+                所得中位數與青年人口象限占比
+            </a>
+            <a class="nav-item" onclick="goTo('ch6')">
+                <span class="nav-num">06</span>
+                年齡與房價的權衡
+            </a>
+            <a class="nav-item" onclick="goTo('ch7')">
+                <span class="nav-num">07</span>
+                高齡占比與代際扶持壓力
+            </a>
+            <div class="nav-section-divider"></div>
+            <a class="nav-item" onclick="goTo('ch8')">
+                Conclusion
+            </a>
+        </div>
+        <div class="sidebar-footer">點擊旁邊空白處可關閉選單</div>
+    </nav>
+
+    <!-- ████ 封面 ████ -->
+    <div class="cover" id="cover">
+        <div class="cover-badge">國立暨南國際大學．資訊管理學系</div>
+        <h1>台北市房價與社會經濟因素關聯性</h1>
+        <h2>第四組－資料視覺化期中報告</h2>
+        <div class="cover-divider"></div>
+        <div class="cover-meta">
+            <div class="cover-meta-item">
+                <span class="label">姓名</span>
+                <span class="value">謝芷昀</span>
+            </div>
+            <div class="cover-meta-item">
+                <span class="label">學號</span>
+                <span class="value">114213510</span>
+            </div>
+        </div>
+        <div class="cover-meta">
+            <div class="cover-meta-item">
+                <span class="value">楊喬茹</span>
+            </div>
+            <div class="cover-meta-item">
+                <span class="value">114213532</span>
+            </div>
+        </div>
+        <div class="cover-meta">
+            <div class="cover-meta-item">
+                <span class="value">許家騰</span>
+            </div>
+            <div class="cover-meta-item">
+                <span class="value">114213530</span>
+            </div>
+        </div>
+        <div class="cover-meta">
+            <div class="cover-meta-item">
+                <span class="value">黃溢賢</span>
+            </div>
+            <div class="cover-meta-item">
+                <span class="value">114213529</span>
+            </div>
+        </div>
+        <div class="cover-meta">
+            <div class="cover-meta-item">
+                <span class="value">顏偉森</span>
+            </div>
+            <div class="cover-meta-item">
+                <span class="value">114213514</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ████ 目錄 ████ -->
+    <div class="page" id="toc">
+        <div class="section-label">Category</div>
+        <div class="section-title">目錄</div>
+        <ul class="toc-list">
+            <li onclick="goTo('ch1')">
+                <span class="toc-num">1</span>
+                <span class="toc-text">台北各區每坪單價熱力圖及綜合所得平均</span>
+                <span class="toc-page">↗</span>
+            </li>
+            <li onclick="goTo('ch2')">
+                <span class="toc-num">2</span>
+                <span class="toc-text">購屋壓力與經濟實力</span>
+                <span class="toc-page">↗</span>
+            </li>
+            <li onclick="goTo('ch3')">
+                <span class="toc-num">3</span>
+                <span class="toc-text">房地產平均成交單價與交易量</span>
+                <span class="toc-page">↗</span>
+            </li>
+            <li onclick="goTo('ch4')">
+                <span class="toc-num">4</span>
+                <span class="toc-text">扶養比與所得之交叉分析</span>
+                <span class="toc-page">↗</span>
+            </li>
+            <li onclick="goTo('ch5')">
+                <span class="toc-num">5</span>
+                <span class="toc-text">所得中位數與青年人口象限占比</span>
+                <span class="toc-page">↗</span>
+            </li>
+            <li onclick="goTo('ch6')">
+                <span class="toc-num">6</span>
+                <span class="toc-text">年齡與房價的權衡</span>
+                <span class="toc-page">↗</span>
+            </li>
+            <li onclick="goTo('ch7')">
+                <span class="toc-num">7</span>
+                <span class="toc-text">高齡占比與代際扶持壓力</span>
+                <span class="toc-page">↗</span>
+            </li>
+        </ul>
+        <div class="page-num"></div>
+    </div>
+
+    <!-- ████ 正文 ████ -->
+    <div class="page">
+
+        <!-- 第一章 -->
+        <div class="chapter" id="ch1">
+            <div class="section-label">Chapter 01</div>
+            <div class="section-title">台北各區每坪單價熱力圖及綜合所得平均</div>
+            <p>
+                這張圖是將台北市各行政區的每坪房價和平均綜合所得放在同一張地圖上比較。圖中底色越深，代表每坪房價越高；紅色圓圈越大、顏色越深，代表平均所得越高。
+            </p>
+            <p>
+                從圖中可以發現，大安、信義、松山等核心區域，不但房價較高，平均所得也相對較高；而北投、文山、萬華等區域，房價和所得則相對較低。這表示台北市各行政區的房價和所得大致呈現正向關係，但也不完全是所得單一因素決定，還可能受到地段、交通和生活機能等條件影響。」
+            </p>
+
+            <div class="chart-grid">
+                <div class="chart-box full">
+                    <div class="chart-header"></div>
+                    <div class='tableauPlaceholder' id='viz1777041515963' style='position: relative'>
+                        <noscript>
+                            <a href='#'>
+                                <img alt=' '
+                                    src='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;_1&#47;_17770193363360&#47;sheet0&#47;1_rss.png'
+                                    style='border: none' />
+                            </a>
+                        </noscript>
+                        <object class='tableauViz' style='display:none;'>
+                            <param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F' />
+                            <param name='embed_code_version' value='3' />
+                            <param name='site_root' value='' />
+                            <param name='name' value='_17770193363360&#47;sheet0' />
+                            <param name='tabs' value='no' />
+                            <param name='toolbar' value='yes' />
+                            <param name='static_image'
+                                value='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;_1&#47;_17770193363360&#47;sheet0&#47;1.png' />
+                            <param name='animate_transition' value='yes' />
+                            <param name='display_static_image' value='yes' />
+                            <param name='display_spinner' value='yes' />
+                            <param name='display_overlay' value='yes' />
+                            <param name='display_count' value='yes' />
+                            <param name='language' value='zh-TW' />
+                        </object>
+                    </div>
+                    <script type='text/javascript'>
+                        var divElement = document.getElementById('viz1777041515963');
+                        var vizElement = divElement.getElementsByTagName('object')[0];
+                        vizElement.style.width = '100%';
+                        vizElement.style.height = (divElement.offsetWidth * 0.7) + 'px';
+                        var scriptElement = document.createElement('script');
+                        scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';
+                        vizElement.parentNode.insertBefore(scriptElement, vizElement);              
+                    </script>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第二章 -->
+        <div class="chapter" id="ch2">
+            <div class="section-label">Chapter 02</div>
+            <div class="section-title">購屋壓力與經濟實力</div>
+            <h4>
+                透過比較房價與所得，觀察不同區域居民買房負擔程度，以及哪些區域屬於高價高所得、低價低所得等型態。</h4>
+            <ul style="margin-top:12px ;list-style: none;">
+                <li>X軸：平均值中位數（可視為收入或經濟能力指標）越往右代表經濟能力越高。</li>
+                <li>Y軸：中位數每坪單價，越往上代表房價越高。</li>
+            </ul>
+            <ul style="margin-top: 12px;list-style: none;">
+                <li>
+                    <strong>右上象限（高收入、高房價區）</strong>－ 這些區域交通便利、機能成熟，因此房價高，但居民收入也相對較高，購屋需求穩定。
+                </li>
+                <li>
+                    <strong>左上象限（收入較低，房價偏高）</strong>－ 例如信義區、中山區，房價已高於平均，但收入未明顯高出許多，顯示購屋壓力相對較大。
+                </li>
+                <li>
+                    <strong>左下象限（低收入、低房價區）</strong>－ 例如萬華區、士林區，這類區域房價相對親民，但收入水準也較低，對首購族而言可能較容易進入市場。
+                </li>
+                <li><strong>右下象限（高收入、低房價區</strong>）－ 例如文山區、內湖區，代表居民所得能力不錯，
+                    但房價相較核心區較低，屬於CP值較高的居住選擇。</li>
+            </ul>
+            <p style="margin-top: 12px; text-indent: 0;">
+                整體來看，台北市房價與所得大致呈現正相關，也就是收入高的區域房價通常較高，
+                但不同區域仍有差異，例如文山、內湖屬於相對可負擔區，而大安、中正則屬高價高門檻區，
+                這也反映出台北市不同生活圈的住宅市場結構。</p>
+
+            <div class="chart-grid">
+                <div class="chart-box full">
+                    <div class="chart-header"></div>
+                    <div class='tableauPlaceholder' id='viz1777041725323' style='position: relative'>
+                        <noscript>
+                            <a href='#'>
+                                <img alt=' '
+                                    src='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;_1&#47;_17770193363360&#47;sheet1&#47;1_rss.png'
+                                    style='border: none' />
+                            </a>
+                        </noscript>
+                        <object class='tableauViz' style='display:none;'>
+                            <param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F' />
+                            <param name='embed_code_version' value='3' />
+                            <param name='site_root' value='' />
+                            <param name='name' value='_17770193363360&#47;sheet1' />
+                            <param name='tabs' value='no' />
+                            <param name='toolbar' value='yes' />
+                            <param name='static_image'
+                                value='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;_1&#47;_17770193363360&#47;sheet1&#47;1.png' />
+                            <param name='animate_transition' value='yes' />
+                            <param name='display_static_image' value='yes' />
+                            <param name='display_spinner' value='yes' />
+                            <param name='display_overlay' value='yes' />
+                            <param name='display_count' value='yes' />
+                            <param name='language' value='zh-TW' />
+                        </object>
+                    </div>
+                    <script type='text/javascript'>
+                        var divElement = document.getElementById('viz1777041725323');
+                        var vizElement = divElement.getElementsByTagName('object')[0];
+                        vizElement.style.width = '100%';
+                        vizElement.style.height = (divElement.offsetWidth * 0.7) + 'px';
+                        var scriptElement = document.createElement('script');
+                        scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';
+                        vizElement.parentNode.insertBefore(scriptElement, vizElement);            
+                    </script>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第三章 -->
+        <div class="chapter" id="ch3">
+            <div class="section-label">Chapter 03</div>
+            <div class="section-title">房地產成交單價與交易量</div>
+            <p>
+                多數購屋者在評估房產時，往往優先關注價格的高低，比較難掌握各區域市場的實際活絡程度。如果將交易量與價格指標同時納入分析，就可以更了解各區市場的相對熱度。
+            </p>
+            <p>
+                民國111年整體市場呈現「量縮價穩」的趨勢，我們推測與多項因素相關，包括政府推動的房市管制政策（如打擊投機炒作措施）、疫情期間建築成本上升，以及部分賣方讓價意願不足，進而影響買方進場意願，使部分需求轉為觀望甚至由購轉租。同時，投資客亦趨於保守，暫緩進場布局。
+            </p>
+
+            <div class="chart-grid">
+                <div class="chart-box full">
+                    <div class="chart-header"></div>
+                    <div class='tableauPlaceholder' id='viz1777042000459' style='position: relative'>
+                        <noscript>
+                            <a href='#'>
+                                <img alt=' '
+                                    src='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;_1&#47;_17770193363360&#47;sheet2&#47;1_rss.png'
+                                    style='border: none' />
+                            </a>
+                        </noscript>
+                        <object class='tableauViz' style='display:none;'>
+                            <param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F' />
+                            <param name='embed_code_version' value='3' />
+                            <param name='site_root' value='' />
+                            <param name='name' value='_17770193363360&#47;sheet2' />
+                            <param name='tabs' value='no' />
+                            <param name='toolbar' value='yes' />
+                            <param name='static_image'
+                                value='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;_1&#47;_17770193363360&#47;sheet2&#47;1.png' />
+                            <param name='animate_transition' value='yes' />
+                            <param name='display_static_image' value='yes' />
+                            <param name='display_spinner' value='yes' />
+                            <param name='display_overlay' value='yes' />
+                            <param name='display_count' value='yes' />
+                            <param name='language' value='zh-TW' />
+                        </object>
+                    </div>
+                    <script type='text/javascript'>
+                        var divElement = document.getElementById('viz1777042000459');
+                        var vizElement = divElement.getElementsByTagName('object')[0]; vizElement.style.width = '100%';
+                        vizElement.style.height = (divElement.offsetWidth * 0.7) + 'px';
+                        var scriptElement = document.createElement('script');
+                        scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';
+                        vizElement.parentNode.insertBefore(scriptElement, vizElement);               
+                    </script>
+                    <!-- <div class="chart-caption">X軸為每坪單價，顏色越深價格越高；圓圈代表交易量，越大交易量越多</div> -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 第四章 -->
+        <div class="chapter" id="ch4">
+            <div class="section-label">Chapter 04</div>
+            <div class="section-title">扶養比與所得之交叉分析</div>
+            <ul style="list-style: none; padding-left: 0;">
+                X 軸越右邊平均所得越高，Y 軸越上面的撫養比越高的(負擔的人較多)。
+                <li style="margin-top: 12px;">
+                    <strong>右上高所得高撫養比</strong>－表示大安區比較多高收入族群，但小孩跟老人也較多
+                </li>
+                <li>
+                    <strong>左上低所得高撫養比</strong>－收入低撫養壓力高，這區相對來說壓力最大
+                </li>
+                <li><strong>左下低所得低撫養比</strong>－這邊的單身族群可能較多</li>
+                <li><strong>右下高所得低撫養比</strong>－生活條件相對較輕鬆的地區</li>
+            </ul>
+            <p style="text-indent: 0; padding-left: 0; margin-top: 12px;">
+                107～111台北市各行政區的位置沒有甚麼太大的變化，但可以觀察到他們各區的撫養比一直持續在上升，但他們的所得是有上下起伏的
+            </p>
+
+            <div class="chart-grid">
+                <div class="chart-box full">
+                    <div class="chart-header"></div>
+                    <div class='tableauPlaceholder' id='viz1777042064629' style='position: relative'>
+                        <noscript>
+                            <a href='#'>
+                                <img alt=' '
+                                    src='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;_1&#47;_17770193363360&#47;sheet3&#47;1_rss.png'
+                                    style='border: none' />
+                            </a>
+                        </noscript>
+                        <object class='tableauViz' style='display:none;'>
+                            <param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F' />
+                            <param name='embed_code_version' value='3' />
+                            <param name='site_root' value='' />
+                            <param name='name' value='_17770193363360&#47;sheet3' />
+                            <param name='tabs' value='no' />
+                            <param name='toolbar' value='yes' />
+                            <param name='static_image'
+                                value='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;_1&#47;_17770193363360&#47;sheet3&#47;1.png' />
+                            <param name='animate_transition' value='yes' />
+                            <param name='display_static_image' value='yes' />
+                            <param name='display_spinner' value='yes' />
+                            <param name='display_overlay' value='yes' />
+                            <param name='display_count' value='yes' />
+                            <param name='language' value='zh-TW' />
+                        </object>
+                    </div>
+                    <script type='text/javascript'>
+                        var divElement = document.getElementById('viz1777042064629');
+                        var vizElement = divElement.getElementsByTagName('object')[0]; vizElement.style.width = '100%';
+                        vizElement.style.height = (divElement.offsetWidth * 0.7) + 'px';
+                        var scriptElement = document.createElement('script');
+                        scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';
+                        vizElement.parentNode.insertBefore(scriptElement, vizElement);             
+                    </script>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第五章 -->
+        <div class="chapter" id="ch5">
+            <div class="section-label">Chapter 05</div>
+            <div class="section-title">所得中位數與青年人口象限占比</div>
+            <p>
+                像內湖區與北投區的人口比例較高而且所得也高於平均值，這代表說這些地區可能具有比較好的就業機會與生活條件，因此吸引較多年輕人居住。
+                但像大安區，雖然所得最高，但青年人口比例最低(只有23%)，代表說可能居住成本很高，導致沒什麼人願意來住。</p>
+            <p>
+                然後像南港區跟萬華區，雖然所得偏低，但青年人口比例都偏高，還是吸引了許多年輕人，可能是因為交通便利或是產業的關係。
+                然後是中正區與松山區，所得跟青年比例都偏低，這裡顯示了年輕人相對較少在這裡居住可以發現青年人口比例與所得之間 並不是完全呈現正相關關係，除了收入之外，房價、生活條件與產業機會，也可能影響到人口的分布。</p>
+
+            <div class="chart-grid">
+                <div class="chart-box full">
+                    <div class="chart-header"></div>
+                    <div class='tableauPlaceholder' id='viz1777042210463' style='position: relative'>
+                        <noscript>
+                            <a href='#'>
+                                <img alt=' '
+                                    src='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;_1&#47;_17770193363360&#47;sheet4&#47;1_rss.png'
+                                    style='border: none' />
+                            </a>
+                        </noscript>
+                        <object class='tableauViz' style='display:none;'>
+                            <param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F' />
+                            <param name='embed_code_version' value='3' />
+                            <param name='site_root' value='' />
+                            <param name='name' value='_17770193363360&#47;sheet4' />
+                            <param name='tabs' value='no' />
+                            <param name='toolbar' value='yes' />
+                            <param name='static_image'
+                                value='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;_1&#47;_17770193363360&#47;sheet4&#47;1.png' />
+                            <param name='animate_transition' value='yes' />
+                            <param name='display_static_image' value='yes' />
+                            <param name='display_spinner' value='yes' />
+                            <param name='display_overlay' value='yes' />
+                            <param name='display_count' value='yes' />
+                            <param name='language' value='zh-TW' />
+                        </object>
+                    </div>
+                    <script type='text/javascript'>
+                        var divElement = document.getElementById('viz1777042210463');
+                        var vizElement = divElement.getElementsByTagName('object')[0];
+                        vizElement.style.width = '100%';
+                        vizElement.style.height = (divElement.offsetWidth * 0.7) + 'px';
+                        var scriptElement = document.createElement('script');
+                        scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';
+                        vizElement.parentNode.insertBefore(scriptElement, vizElement);              
+                    </script>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第六章 -->
+        <div class="chapter" id="ch6">
+            <div class="section-label">Chapter 06</div>
+            <div class="section-title">年齡與房價的權衡</div>
+            <!-- 20-39：圖左、文右 -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 30px 0;">
+                <div class="chart-box" style="display: flex; align-items: center;">
+                    <div class='tableauPlaceholder' id='viz1777287612250' style='position: relative; width: 100%;'>
+                        <noscript>
+                            <a href='#'>
+                                <img alt=' '
+                                    src='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;_1&#47;_17770193363360&#47;20-39&#47;1_rss.png'
+                                    style='border: none' />
+                            </a>
+                        </noscript>
+                        <object class='tableauViz' style='display:none;'>
+                            <param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F' />
+                            <param name='embed_code_version' value='3' />
+                            <param name='site_root' value='' />
+                            <param name='name' value='_17770193363360&#47;20-39' />
+                            <param name='tabs' value='no' />
+                            <param name='toolbar' value='yes' />
+                            <param name='static_image'
+                                value='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;_1&#47;_17770193363360&#47;20-39&#47;1.png' />
+                            <param name='animate_transition' value='yes' />
+                            <param name='display_static_image' value='yes' />
+                            <param name='display_spinner' value='yes' />
+                            <param name='display_overlay' value='yes' />
+                            <param name='display_count' value='yes' />
+                            <param name='language' value='zh-TW' />
+                        </object>
+                    </div>
+                    <script type='text/javascript'>
+                        var divElement = document.getElementById('viz1777287612250');
+                        var vizElement = divElement.getElementsByTagName('object')[0];
+                        vizElement.style.width = '100%';
+                        vizElement.style.height = (divElement.offsetWidth * 1) + 'px';
+                        var scriptElement = document.createElement('script');
+                        scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';
+                        vizElement.parentNode.insertBefore(scriptElement, vizElement);
+                    </script>
+                </div>
+                <div style="background: #f7fdfd; border: 1.5px solid #b2d8d8; border-radius: 10px; padding: 20px;">
+                    <h4 style="color: #0a4a5a; margin: 0 0 12px 0; font-size: 15px;">20–39 歲｜年齡與房價的權衡</h4>
+                    <p style="margin: 0; color: #2c4a52; font-size: 14px; line-height: 1.7;">
+                        這張圖揭示了三種截然不同的行政區型態：
+                        <br><br>
+                        <strong>1. 「高房價、高聚集」：中山區、大安區</strong><br>
+                        現象： 柱狀極高（房價頂天），但顏色深（青年總數多）。<br>
+                        分析： 大安區雖房價最高（突破
+                        800K），但青年數依然維持高位。這通常是因為該區具備極強的學區、交通與家戶背景支援，或是設籍人口多。中山區則是典型的「工作與娛樂中心」，雖然單價高，但因為有大量的小坪數套房，降低了進入門檻，吸引了大量
+                        20-39 歲的租屋族或單身貴族。
+                        <br><br>
+                        <strong>2. 「CP 值之王」：內湖區</strong><br>
+                        現象： 房價處於中價位（約 500K-600K 區間），但顏色是全台北最深。<br>
+                        分析： 這驗證了前述「內科紅利」。內湖的房價相對於大安區低，但提供的薪資水平足以支撐 20-39 歲青年在此立足。這也是為什麼內湖在上一張地圖中「代際指數」表現最好的原因。
+                    </p>
+                </div>
+            </div>
+
+            <!-- 40-64：文左、圖右 -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 30px 0;">
+                <div style="background: #f7fdfd; border: 1.5px solid #b2d8d8; border-radius: 10px; padding: 20px;">
+                    <h4 style="color: #0a4a5a; margin: 0 0 12px 0; font-size: 15px;">
+                        40–64 歲｜年齡與房價的權衡</h4>
+                    <p style="margin: 0; color: #2c4a52; font-size: 14px; line-height: 1.7;">
+                        與青年族群相比，這一層級的分布呈現出更明顯的「資產穩定性」：
+                        <br><br>
+                        <strong>1. 大安區的「資產定著」</strong><br>
+                        現象： 大安區房價最高（長條最高），且顏色極深（與 20-39 歲時的淺色形成鮮明對比）。<br>
+                        分析： 這反映了「門檻效應」的長期結果。40-64 歲的人群多半是在房價尚未飆漲至極端前即已入主，或是現在具備足以負擔 80
+                        萬以上單價的實力。大安區成了中壯年人口最穩固的堡壘，這也解釋了為何該區代際指數低（老人多、中年多、年輕人少）。
+                        <br><br>
+                        <strong>2. 士林、北投與松山的「全齡化成熟」</strong><br>
+                        現象： 這些區域的顏色也相當深。<br>
+                        分析： 士林與北投擁有較佳的居住環境與相對適中的房價（約 60K-70K），對於重視生活品質、已有家庭的中壯年族群極具吸引力。
+                        <br><br>
+                        <strong>3. 內湖區的「全能冠軍」</strong><br>
+                        現象： 房價長條雖非最高，但顏色仍是全區最深。<br>
+                        分析： 內湖不只是青年的磁鐵，也是中壯年的核心。這代表許多在內科工作的青年在晉升為中壯年後，依然選擇留在內湖。
+                    </p>
+                </div>
+                <div class="chart-box" style="display: flex; align-items: center;">
+                    <div class='tableauPlaceholder' id='viz1777287626652' style='position: relative; width: 100%;'>
+                        <noscript>
+                            <a href='#'>
+                                <img alt=' '
+                                    src='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;_1&#47;_17770193363360&#47;40-64&#47;1_rss.png'
+                                    style='border: none' />
+                            </a>
+                        </noscript>
+                        <object class='tableauViz' style='display:none;'>
+                            <param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F' />
+                            <param name='embed_code_version' value='3' />
+                            <param name='site_root' value='' />
+                            <param name='name' value='_17770193363360&#47;40-64' />
+                            <param name='tabs' value='no' />
+                            <param name='toolbar' value='yes' />
+                            <param name='static_image'
+                                value='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;_1&#47;_17770193363360&#47;40-64&#47;1.png' />
+                            <param name='animate_transition' value='yes' />
+                            <param name='display_static_image' value='yes' />
+                            <param name='display_spinner' value='yes' />
+                            <param name='display_overlay' value='yes' />
+                            <param name='display_count' value='yes' />
+                            <param name='language' value='zh-TW' />
+                        </object>
+                    </div>
+                    <script type='text/javascript'>
+                        var divElement = document.getElementById('viz1777287626652');
+                        var vizElement = divElement.getElementsByTagName('object')[0];
+                        vizElement.style.width = '100%';
+                        vizElement.style.height = (divElement.offsetWidth * 1) + 'px';
+                        var scriptElement = document.createElement('script');
+                        scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';
+                        vizElement.parentNode.insertBefore(scriptElement, vizElement);
+                    </script>
+                </div>
+            </div>
+
+            <!-- 65+：圖左、文右 -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 30px 0;">
+                <div class="chart-box" style="display: flex; align-items: center;">
+                    <div class='tableauPlaceholder' id='viz1777287634872' style='position: relative; width: 100%;'>
+                        <noscript>
+                            <a href='#'>
+                                <img alt=' '
+                                    src='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;_1&#47;_17770193363360&#47;65&#47;1_rss.png'
+                                    style='border: none' />
+                            </a>
+                        </noscript>
+                        <object class='tableauViz' style='display:none;'>
+                            <param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F' />
+                            <param name='embed_code_version' value='3' />
+                            <param name='site_root' value='' />
+                            <param name='name' value='_17770193363360&#47;65' />
+                            <param name='tabs' value='no' />
+                            <param name='toolbar' value='yes' />
+                            <param name='static_image'
+                                value='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;_1&#47;_17770193363360&#47;65&#47;1.png' />
+                            <param name='animate_transition' value='yes' />
+                            <param name='display_static_image' value='yes' />
+                            <param name='display_spinner' value='yes' />
+                            <param name='display_overlay' value='yes' />
+                            <param name='display_count' value='yes' />
+                            <param name='language' value='zh-TW' />
+                        </object>
+                    </div>
+                    <script type='text/javascript'>
+                        var divElement = document.getElementById('viz1777287634872');
+                        var vizElement = divElement.getElementsByTagName('object')[0];
+                        vizElement.style.width = '100%';
+                        vizElement.style.height = (divElement.offsetWidth * 1) + 'px';
+                        var scriptElement = document.createElement('script');
+                        scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';
+                        vizElement.parentNode.insertBefore(scriptElement, vizElement);
+                    </script>
+                </div>
+                <div style="background: #f7fdfd; border: 1.5px solid #b2d8d8; border-radius: 10px; padding: 20px;">
+                    <h4 style="color: #0a4a5a; margin: 0 0 12px 0; font-size: 15px;">
+                        65+ 歲｜年齡與房價的權衡</h4>
+                    <p style="margin: 0; color: #2c4a52; font-size: 14px; line-height: 1.7;">
+                        這張圖展現了與「青年圖表」完全相反的邏輯，呈現出強烈的「正相關」：
+                        <br><br>
+                        <strong>1. 大安區：高房價與高齡的雙重高峰</strong><br>
+                        現象： 房價長條全台北最高，且顏色也是全台北最深（深藍）。<br>
+                        分析： 這驗證了「資產累積與年齡成正比」。大安區的高房價對 20-39 歲青年是「排擠力」，但對 65+ 高齡者而言則是「財富的象徵」與「長期持有的結果」。高達 63.9
+                        萬的高齡人口穩居地王區，這完全解釋了為什麼大安區的代際指數會是全台北最低（0.90）。
+                        <br><br>
+                        <strong>2. 醫療與機能的磁吸</strong><br>
+                        現象： 士林、松山、中正等高房價區，顏色同樣保持深色。<br>
+                        分析： 這些區域通常擁有台北市最頂尖的醫療資源（如台大、榮總、馬偕）。對於 65 歲以上的族群，高房價反而成了高齡人口最密集的區域。
+                        <br><br>
+                        <strong>3. 內湖區：跨世代的匯集點</strong><br>
+                        現象： 儘管內湖是青年的重心，但 65+ 的顏色依然不淺。<br>
+                        分析： 這顯示內湖區正經歷第一代居民的集體老化。雖然目前代際指數還靠年輕人撐著，但分母（高齡者）的實力也不容小覷。
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第七章 -->
+        <div class="chapter" id="ch7">
+            <div class="section-label">Chapter 07</div>
+            <div class="section-title">高齡占比與代際扶持壓力</div>
+            <ul style="list-style: none; padding-left: 0;">
+                觀察 107 年至 111 年的圖表變化，我們可以歸納出三個驚人的趨勢：
+                <br><br>
+                <li><strong>1. 全域性的「褪色」：世代斷層擴大</strong><br>
+                    數據點： 台北市整體的藍色背景從 107 年的濃郁深藍，逐年變淺，到了 111 年幾乎全區都變成了淺藍色。<br>
+                    意義： 即使是全台北最年輕的內湖區，代際指數也從 107 年的 2.33 暴跌至 111 年的
+                    1.55。這代表「每一位老人對應的青年數量」在五年內萎縮了約 33%。這不是單一區域的問題，是全台北青年勞動力的全面稀釋。</li><br>
+                <li><strong>2. 「大安區」指標：跌破臨界點</strong><br>
+                    數據點： 大安區的代際指數在 111 年正式跌破了 0.90（地圖顯示 0.90）。<br>
+                    意義： 當指數低於 1.0，代表該區的高齡人口數量已經超越了青年人口（20-39歲）。
+                    大安區作為傳統文教重鎮，正領先全台北進入「青年比老人少」的倒金字塔極限。</li><br>
+                <li><strong>3. 紅色氣泡的「膨脹」：長照壓力的具現化</strong><br>
+                    數據點： 所有行政區的紅色圓圈都在穩定擴大。<br>
+                    意義： 這代表高齡人口佔比（分母）持續攀升。結合代際指數的下降，我們可以得出結論：台北市各區的扶養壓力不是線性增加，而是因「分子減、分母增」而產生的加乘性爆發。</li>
+            </ul>
+
+            <div class="chart-grid">
+                <div class="chart-box full">
+                    <div class="chart-header"></div>
+                    <div class='tableauPlaceholder' id='viz1777042755216' style='position: relative'>
+                        <noscript>
+                            <a href='#'>
+                                <img alt=' '
+                                    src='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;_1&#47;_17770193363360&#47;sheet6&#47;1_rss.png'
+                                    style='border: none' />
+                            </a>
+                        </noscript>
+                        <object class='tableauViz' style='display:none;'>
+                            <param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F' />
+                            <param name='embed_code_version' value='3' />
+                            <param name='site_root' value='' />
+                            <param name='name' value='_17770193363360&#47;sheet6' />
+                            <param name='tabs' value='no' />
+                            <param name='toolbar' value='yes' />
+                            <param name='static_image'
+                                value='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;_1&#47;_17770193363360&#47;sheet6&#47;1.png' />
+                            <param name='animate_transition' value='yes' />
+                            <param name='display_static_image' value='yes' />
+                            <param name='display_spinner' value='yes' />
+                            <param name='display_overlay' value='yes' />
+                            <param name='display_count' value='yes' />
+                            <param name='language' value='zh-TW' />
+                        </object>
+                    </div>
+                    <script type='text/javascript'>
+                        var divElement = document.getElementById('viz1777042755216');
+                        var vizElement = divElement.getElementsByTagName('object')[0];
+                        vizElement.style.width = '100%';
+                        vizElement.style.height = (divElement.offsetWidth * 0.7) + 'px';
+                        var scriptElement = document.createElement('script');
+                        scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';
+                        vizElement.parentNode.insertBefore(scriptElement, vizElement);               
+                    </script>
+                </div>
+            </div>
+        </div>
+
+        <div class="page-num"></div>
+
+
+    </div>
+
+    <!-- 結論 -->
+    <div class="page">
+        <div class="chapter" id="ch8">
+            <div class="section-label">Conclusion</div>
+            <div class="section-title">結論</div>
+            <p>
+                總結來說，台北市正陷入「高房價—高齡化」的雙重循環。年輕人不是不努力，而是 20 歲步入社會後，面對 80 萬單價的門檻，只能被迫往地圖邊緣移動，而青年向邊際遷徙、核心區域加速老化。</p>
+            <p>
+                如果我們不解決居住成本與產業配置的失衡，未來的台北將會變成一座「有錢人的長照中心」。數據告訴我們，唯有像內湖這樣能提供產值與生活權衡的區域，才能延緩城市的衰老。</p>
+        </div>
+    </div>
+
+    <!-- END 城市夜景 -->
+    <!-- <div style="width:100%;background:#010610;overflow:hidden;">
+        <canvas id="cityCanvas" style="display:block;width:100%;"></canvas>
+    </div>
+    <!-- END 城市夜景 -->
+    <!-- <script>
+        (function () {
+            var canvas = document.getElementById('cityCanvas');
+            var ctx = canvas.getContext('2d');
+
+            /* 字型點陣 */
+            var E = [[1, 1, 1, 1], [1, 0, 0, 0], [1, 1, 1, 0], [1, 0, 0, 0], [1, 0, 0, 0], [1, 1, 1, 1]];
+            var N = [[1, 0, 0, 0, 1], [1, 1, 0, 0, 1], [1, 1, 1, 0, 1], [1, 0, 1, 1, 1], [1, 0, 0, 1, 1], [1, 0, 0, 0, 1]];
+            var D = [[1, 1, 1, 0], [1, 0, 0, 1], [1, 0, 0, 1], [1, 0, 0, 1], [1, 0, 0, 1], [1, 1, 1, 0]];
+            var LETTERS = [E, N, D], COLS = [4, 5, 4];
+
+            /* 視窗與建築尺寸 */
+            var WW = 16, WH = 20, WGX = 8, WGY = 10;
+            var BPX = 22, BPT = 26, BPB = 18;
+            var ROWS = 6, EXTRA_H = [0, 36, 0], GAP = 26;
+
+            /* 星星 */
+            var stars = [];
+            for (var i = 0; i < 120; i++) stars.push({
+                x: Math.random(), y: Math.random() * 0.65,
+                r: Math.random() * 1.5 + 0.3,
+                ph: Math.random() * Math.PI * 2,
+                sp: Math.random() * 0.03 + 0.008
+            });
+
+            var t = 0;
+
+            function bldW(cols) { return cols * (WW + WGX) - WGX + BPX * 2; }
+            function bldH(i) { return ROWS * (WH + WGY) - WGY + BPT + BPB + EXTRA_H[i]; }
+
+            function resize() {
+                var w = canvas.parentElement.offsetWidth || window.innerWidth;
+                canvas.width = w;
+                canvas.height = Math.max(400, Math.round(w * 0.44));
+            }
+
+            function draw() {
+                var W = canvas.width, H = canvas.height, gnd = Math.round(H * 0.80);
+
+                /* 夜空 */
+                var sk = ctx.createLinearGradient(0, 0, 0, gnd);
+                sk.addColorStop(0, '#010610');
+                sk.addColorStop(0.6, '#04101e');
+                sk.addColorStop(1, '#08182e');
+                ctx.fillStyle = sk; ctx.fillRect(0, 0, W, H);
+
+                /* 星星 */
+                for (var i = 0; i < stars.length; i++) {
+                    var s = stars[i];
+                    var a = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(t * s.sp + s.ph));
+                    ctx.beginPath();
+                    ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255,255,255,' + a + ')';
+                    ctx.fill();
+                }
+
+                /* 月亮（新月形） */
+                var mx = W * 0.11, my = H * 0.13, mr = Math.min(W, H) * 0.048;
+                var mg = ctx.createRadialGradient(mx, my, 0, mx, my, mr * 3.5);
+                mg.addColorStop(0, 'rgba(255,250,200,0.14)');
+                mg.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = mg; ctx.fillRect(mx - mr * 4, my - mr * 4, mr * 8, mr * 8);
+                ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2);
+                ctx.fillStyle = '#fffce8'; ctx.fill();
+                ctx.beginPath(); ctx.arc(mx + mr * 0.38, my - mr * 0.12, mr * 0.83, 0, Math.PI * 2);
+                ctx.fillStyle = '#04101e'; ctx.fill();
+
+                /* 建築尺寸 */
+                var bW = [bldW(COLS[0]), bldW(COLS[1]), bldW(COLS[2])];
+                var bH = [bldH(0), bldH(1), bldH(2)];
+                var totW = bW[0] + bW[1] + bW[2] + GAP * 2;
+                var sx = Math.round((W - totW) / 2);
+
+                /* 背景建築剪影 */
+                var bg = [
+                    { x: 0.02, w: 0.09, h: 0.32 }, { x: 0.10, w: 0.06, h: 0.23 },
+                    { x: 0.15, w: 0.10, h: 0.42 }, { x: 0.24, w: 0.06, h: 0.19 },
+                    { x: 0.29, w: 0.05, h: 0.26 },
+                    { x: 0.73, w: 0.06, h: 0.23 }, { x: 0.78, w: 0.09, h: 0.40 },
+                    { x: 0.86, w: 0.07, h: 0.21 }, { x: 0.92, w: 0.07, h: 0.46 },
+                    { x: 0.96, w: 0.04, h: 0.29 }
+                ];
+                for (var bi = 0; bi < bg.length; bi++) {
+                    var bd = bg[bi];
+                    var bx = bd.x * W, bw = bd.w * W, bh = bd.h * gnd, by = gnd - bh;
+                    ctx.fillStyle = '#0a1520'; ctx.fillRect(bx, by, bw, bh);
+                    var wr = Math.floor(bh / 18), wc = Math.floor(bw / 13);
+                    for (var rr = 1; rr < wr - 1; rr++) {
+                        for (var cc = 0; cc < wc - 1; cc++) {
+                            if ((rr * 11 + cc * 7 + Math.round(bd.x * 97)) % 7 !== 0) continue;
+                            var wa = 0.18 + 0.12 * Math.sin(t * 0.01 + rr + cc);
+                            ctx.fillStyle = 'rgba(255,215,90,' + wa + ')';
+                            ctx.fillRect(bx + cc * 13 + 3, by + rr * 18 + 4, 7, 11);
+                        }
+                    }
+                }
+
+                /* END 主建築 */
+                var cx = sx;
+                for (var li = 0; li < 3; li++) {
+                    var letter = LETTERS[li];
+                    var bw = bW[li], bh = bH[li], by = gnd - bh;
+
+                    /* 建築體 */
+                    var gb = ctx.createLinearGradient(cx, by, cx + bw, by + bh);
+                    gb.addColorStop(0, '#0f1e32');
+                    gb.addColorStop(1, '#080f1c');
+                    ctx.fillStyle = gb; ctx.fillRect(cx, by, bw, bh);
+                    ctx.strokeStyle = 'rgba(35,70,110,0.4)';
+                    ctx.lineWidth = 1; ctx.strokeRect(cx, by, bw, bh);
+
+                    /* 屋頂裝飾 */
+                    ctx.fillStyle = '#142232';
+                    ctx.fillRect(cx + bw * 0.22, by - 8, bw * 0.10, 8);
+                    ctx.fillRect(cx + bw * 0.58, by - 5, bw * 0.08, 5);
+
+                    /* N 棟天線 */
+                    if (li === 1) {
+                        ctx.strokeStyle = '#1e3a58'; ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(cx + bw / 2, by); ctx.lineTo(cx + bw / 2, by - 30);
+                        ctx.stroke();
+                        var ba = 0.5 + 0.5 * Math.sin(t * 0.055);
+                        ctx.beginPath(); ctx.arc(cx + bw / 2, by - 30, 3.5, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(255,50,50,' + ba + ')'; ctx.fill();
+                        ctx.beginPath(); ctx.arc(cx + bw / 2, by - 30, 7, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(255,50,50,' + (ba * 0.25) + ')'; ctx.fill();
+                    }
+
+                    /* 窗戶 */
+                    var wsx = cx + BPX, wsy = by + BPT + EXTRA_H[li];
+                    for (var r = 0; r < letter.length; r++) {
+                        for (var c = 0; c < letter[r].length; c++) {
+                            var lit = letter[r][c];
+                            var wx = wsx + c * (WW + WGX), wy = wsy + r * (WH + WGY);
+                            if (lit) {
+                                var pulse = 0.82 + 0.18 * Math.sin(t * 0.028 + r * 0.55 + c * 0.75 + li * 1.3);
+                                /* 光暈 */
+                                var wg = ctx.createRadialGradient(wx + WW / 2, wy + WH / 2, 0, wx + WW / 2, wy + WH / 2, WW * 1.6);
+                                wg.addColorStop(0, 'rgba(255,215,70,' + (0.38 * pulse) + ')');
+                                wg.addColorStop(1, 'rgba(255,150,0,0)');
+                                ctx.fillStyle = wg; ctx.fillRect(wx - WW, wy - WH, WW * 3, WH * 3);
+                                /* 窗面 */
+                                ctx.fillStyle = 'rgba(255,235,120,' + pulse + ')';
+                                ctx.fillRect(wx, wy, WW, WH);
+                                /* 窗格線 */
+                                ctx.strokeStyle = 'rgba(160,110,20,0.5)';
+                                ctx.lineWidth = 0.8;
+                                ctx.beginPath();
+                                ctx.moveTo(wx + WW / 2, wy); ctx.lineTo(wx + WW / 2, wy + WH);
+                                ctx.moveTo(wx, wy + WH / 2); ctx.lineTo(wx + WW, wy + WH / 2);
+                                ctx.stroke();
+                            } else {
+                                ctx.fillStyle = 'rgba(12,22,38,0.98)';
+                                ctx.fillRect(wx, wy, WW, WH);
+                                ctx.strokeStyle = 'rgba(28,48,72,0.5)';
+                                ctx.lineWidth = 0.5; ctx.strokeRect(wx, wy, WW, WH);
+                            }
+                        }
+                    }
+                    cx += bw + GAP;
+                }
+
+                /* 地面 */
+                var gg = ctx.createLinearGradient(0, gnd, 0, H);
+                gg.addColorStop(0, '#0c1828'); gg.addColorStop(1, '#020508');
+                ctx.fillStyle = gg; ctx.fillRect(0, gnd, W, H - gnd);
+
+                /* 城市光暈 */
+                var cg = ctx.createRadialGradient(W / 2, gnd, 0, W / 2, gnd, W * 0.5);
+                cg.addColorStop(0, 'rgba(255,185,40,0.08)');
+                cg.addColorStop(0.5, 'rgba(80,120,220,0.04)');
+                cg.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = cg; ctx.fillRect(0, gnd - H * 0.12, W, H * 0.12 + H - gnd);
+
+                /* 地平線光帶 */
+                var hl = ctx.createLinearGradient(0, gnd - 2, 0, gnd + 4);
+                hl.addColorStop(0, 'rgba(100,160,255,0.08)');
+                hl.addColorStop(0.5, 'rgba(150,200,255,0.12)');
+                hl.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = hl; ctx.fillRect(0, gnd - 2, W, 6);
+
+                t++;
+                requestAnimationFrame(draw);
+            }
+
+            resize();
+            window.addEventListener('resize', resize);
+            draw();
+        }());
+    </script> --> -->
+    <script>
+        function toggleNav() {
+            document.body.classList.toggle('nav-open');
+        }
+
+        function goTo(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            document.body.classList.remove('nav-open');
+            setTimeout(() => {
+                const top = el.getBoundingClientRect().top + window.scrollY - 20;
+                window.scrollTo({ top: top, behavior: 'smooth' });
+            }, 200);
+            updateActive(id);
+        }
+
+        function updateActive(id) {
+            document.querySelectorAll('.nav-item').forEach(function (a) {
+                a.classList.remove('active');
+                if (a.getAttribute('onclick') === "goTo('" + id + "')") {
+                    a.classList.add('active');
+                    a.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                }
+            });
+        }
+
+        // 捲動時自動 highlight 目前位置
+        var sections = ['cover', 'toc', 'ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6', 'ch7', 'ch8'];
+        window.addEventListener('scroll', function () {
+            var current = 'cover';
+            sections.forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el && el.getBoundingClientRect().top <= 80) current = id;
+            });
+            updateActive(current);
+        });
+
+        // ESC 鍵關閉
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') document.body.classList.remove('nav-open');
+        });
+    </script>
+</body>
+
+</html>
